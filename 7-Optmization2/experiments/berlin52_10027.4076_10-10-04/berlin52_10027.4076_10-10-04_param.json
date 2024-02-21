@@ -1,0 +1,10 @@
+{
+    "population_size": 50,
+    "generations": 10000,
+    "crossover_rate": 0.5,
+    "problem_class": "TSPProblem",
+    "crossover_class": "TSPCrossover",
+    "selection_class": "RouletteSelection",
+    "mutation_class": "SwapMutation",
+    "mutation_rate": 0.1
+}
