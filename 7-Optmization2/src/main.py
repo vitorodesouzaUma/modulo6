@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from tsp_mutation import SwapMutation
 from tsp_problem import TSPProblem
-from tsp_crossover import TSPCrossover
+from tsp_crossover import partialMappedCrossover
 from tsp_parser import parse_tsp
 from datetime import datetime
 import json
@@ -54,12 +54,33 @@ def save_history(distance_history, ga_parameters, folder, experiment_name):
     plt.savefig(filename) 
     plt.close()
 
+def plot_path(points,folder, experiment_name):
+
+    # Ensure the directory exists
+    os.makedirs(folder, exist_ok=True)
+    filename = os.path.join(folder, f"{experiment_name}_path.png")
+
+    plt.figure(figsize=(15, 8))
+    plt.plot(points[0], points[1], 'o-')
+    plt.title('TSP Solution Path')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.grid(True)
+
+    plt.plot(points[0][0], points[1][0], 'x', c='g')
+    plt.plot(points[0][-1], points[1][-1], 'x', c='r')
+
+    plt.savefig(filename) 
+    plt.close()
+
 
 if __name__ == "__main__":    
 
     # Parse .tsp file
     # The function parse_tsp was developed to return a pandas DataFrame (it seems more genetical)
-    data = parse_tsp(r"Modulo6\7-Optmization2\src\data\berlin52.tsp")
+    file_path = "Modulo6\\7-Optmization2\\src\\data\\berlin52.tsp"
+    #file_path = "Modulo6\\7-Optmization2\\src\\data\\bier127.tsp"
+    data = parse_tsp(file_path)
     # Create DataFrame
     df = pd.DataFrame(data['DATA']).set_index(0)
     # Set column's names
@@ -69,7 +90,6 @@ if __name__ == "__main__":
     # Convert to list of tupples to use in genetic algorithm
     tsp_list = list(df.itertuples(index=False, name=None))
 
-    
 
     print('\n******************** TSP solver ********************')
     print('\nDATASET INFO: \n')
@@ -80,11 +100,11 @@ if __name__ == "__main__":
 
     
     ga = Genetic(
-        population_size=50,
-        generations=10000,
+        population_size=100,
+        generations=150,
         crossover_rate=0.5,
         problem=TSPProblem(tsp_list=tsp_list),
-        crossover=TSPCrossover(),
+        crossover=partialMappedCrossover(),
         selection=RouletteSelection(),
         mutation=SwapMutation(mutation_rate=0.1),
         verbose=1,
@@ -100,7 +120,8 @@ if __name__ == "__main__":
 
     print("Best distance: ", best_distance)
 
-    dataset_name = data['NAME'].replace('NAME: ', '')
+    dataset_name = data['NAME'].replace('NAME', '')
+    dataset_name = dataset_name.replace(':', '').strip()
     # Sanitize and shorten the experiment name if necessary
     experiment_name = sanitize_filename(f"{dataset_name}_{round(best_distance,4)}_{datetime.now().strftime('%H-%M-%S')}")
 
@@ -122,3 +143,6 @@ if __name__ == "__main__":
     save_history(distance_history, ga_parameters, experiment_folder, experiment_name)
     save_ga_parameters(ga_parameters, experiment_folder, experiment_name)
     
+    solution_path = [[gene.value[0] for gene in best_individual.chromosome.genes]]
+    solution_path.append([gene.value[1] for gene in best_individual.chromosome.genes])
+    plot_path(solution_path,experiment_folder, experiment_name)

@@ -6,7 +6,7 @@ from genetic.gene import Gene
 from genetic.chromosome import Chromosome
 
 
-class TSPCrossover(Crossover):
+class partialMappedCrossover(Crossover):
 
     def __init__(self):
         pass
