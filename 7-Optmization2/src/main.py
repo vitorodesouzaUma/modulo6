@@ -1,80 +1,97 @@
 #import genetic # General library created to implement Genetic Algorithms
+from itertools import product
+
 from matplotlib import pyplot as plt
 import numpy as np
-from tsp_mutation import SwapMutation
+from tsp_mutation import DynamicSwapMutation, SwapMutation
 from tsp_problem import TSPProblem
-from tsp_crossover import partialMappedCrossover
-from tsp_parser import parse_tsp
+from tsp_crossover import DynamicPartialMappedCrossover, PartialMappedCrossover
+from tsp_utils import parse_tsp, sanitize_filename, save_ga_parameters, plot_gscv, save_history, plot_path, save_solution
 from datetime import datetime
-import json
 import os
 import pandas as pd
 
 from genetic.genetic import Genetic
 from genetic.selections import RouletteSelection
-from genetic.utils.utils import plot_history
 
-EXPERIMENT_FOLDER = "C:\\Users\\vos_v\\OneDrive\\Documentos\\00 - Europa\\00 - Master\\Módulo 4\\00-Jupyter\\Modulo6\\7-Optmization2\\experiments\\"
+EXPERIMENT_FOLDER = "Modulo6\\7-Optmization2\\experiments\\"
 
-def sanitize_filename(filename):
-    """Replaces invalid file name characters in a string with an underscore."""
-    invalid_chars = '<>:"/\\|?*'
-    for char in invalid_chars:
-        filename = filename.replace(char, '_')
-    return filename
+def solve(data, 
+          population_size, 
+          generations,
+          selection, 
+          crossover, 
+          mutation,
+          cross_validation_folder = "",
+          verbose=1):
 
+    print('\n******************** TSP solver ********************')
+    print('\nDATASET INFO: \n')
+    print('\t',data['NAME'])
+    print('\t',data['DIMENSION'])
+    print('\t',data['EDGE_WEIGHT_TYPE'])
+    print('\n****************************************************\n')
 
-def save_ga_parameters(ga_parameters, folder, experiment_name):
-    # Ensure the directory exists
-    os.makedirs(folder, exist_ok=True)
-    filename = os.path.join(folder, f"{experiment_name}_param.json")
-    with open(filename, 'w') as f:
-        json.dump(ga_parameters, f, indent=4)
-
-
-def save_history(distance_history, ga_parameters, folder, experiment_name):
-    # Ensure the directory exists
-    os.makedirs(folder, exist_ok=True)
-    filename = os.path.join(folder, f"{experiment_name}_hist.png")
     
-    plt.figure(figsize=(15, 8)) 
+    ga = Genetic(
+        population_size=population_size,
+        generations=generations,
+        problem=TSPProblem(tsp_list=tsp_list),
+        crossover=crossover,
+        selection=selection,
+        mutation=mutation,
+        verbose=verbose,
+    )
+
+    start = datetime.now()
+    history, best_individual = ga.run()
+    elapsed_time = datetime.now() - start
+    print(f"\nTotal elapsed ime: {elapsed_time}\n")
+
+    distance_history = [1/individual.fitness for individual in history]
+    best_distance = 1/best_individual.get_fitness()
+
+    print("Best distance: ", best_distance)
+
+    dataset_name = data['NAME'].replace('NAME', '')
+    dataset_name = dataset_name.replace(':', '').strip()
+    # Sanitize and shorten the experiment name if necessary
+    experiment_name = sanitize_filename(f"{dataset_name}_{round(best_distance,4)}_{datetime.now().strftime('%H-%M-%S')}")
+
+    # Define the folder path
+    experiment_folder = os.path.join(EXPERIMENT_FOLDER, cross_validation_folder, experiment_name)
+
+    ga_parameters = {
+        "population_size": ga.population_size,
+        "generations": ga.generations,
+        "crossover_rate": ga.crossover.crossover_rate,
+        "problem_class": ga.problem.__class__.__name__,
+        "crossover_class": ga.crossover.__class__.__name__,
+        "selection_class": ga.selection.__class__.__name__,
+        "mutation_class": ga.mutation.__class__.__name__,
+        "mutation_rate": ga.mutation.mutation_rate,
+        "Total computational time": str(elapsed_time)
+    }
     
-    # Plot the distance history
-    plt.plot(distance_history)
-    plt.title('TSP Solution Distance over Generations')
-    plt.xlabel('Generation')
-    plt.ylabel('Distance')
-    plt.grid(True)
+    # Save the plot and parameters
+    save_history(distance_history, ga_parameters, experiment_folder, experiment_name)
+    save_ga_parameters(ga_parameters, experiment_folder, experiment_name)
+    save_solution(best_individual.chromosome.genes, experiment_folder, experiment_name)
     
-    # Convert GA parameters to a formatted string and add to the plot
-    params_text = "\n".join(f"{key}: {value}" for key, value in ga_parameters.items())
-    plt.gcf().text(0.7, 0.82, params_text, fontsize=9, verticalalignment='top',horizontalalignment='left',
-                   bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.5'))
+    solution_path = [[gene.value[0] for gene in best_individual.chromosome.genes]]
+    solution_path.append([gene.value[1] for gene in best_individual.chromosome.genes])
+    plot_path(solution_path,experiment_folder, experiment_name)
+
+    return best_distance
+
     
-    plt.savefig(filename) 
-    plt.close()
 
-def plot_path(points,folder, experiment_name):
-
-    # Ensure the directory exists
-    os.makedirs(folder, exist_ok=True)
-    filename = os.path.join(folder, f"{experiment_name}_path.png")
-
-    plt.figure(figsize=(15, 8))
-    plt.plot(points[0], points[1], 'o-')
-    plt.title('TSP Solution Path')
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.grid(True)
-
-    plt.plot(points[0][0], points[1][0], 'x', c='g')
-    plt.plot(points[0][-1], points[1][-1], 'x', c='r')
-
-    plt.savefig(filename) 
-    plt.close()
+# ===========================================================================================
+# MAIN
+# ===========================================================================================
 
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
 
     # Parse .tsp file
     # The function parse_tsp was developed to return a pandas DataFrame (it seems more genetical)
@@ -90,59 +107,90 @@ if __name__ == "__main__":
     # Convert to list of tupples to use in genetic algorithm
     tsp_list = list(df.itertuples(index=False, name=None))
 
+    cross_validation = False
 
-    print('\n******************** TSP solver ********************')
-    print('\nDATASET INFO: \n')
-    print('\t',data['NAME'])
-    print('\t',data['DIMENSION'])
-    print('\t',data['EDGE_WEIGHT_TYPE'])
-    print('\n****************************************************')
+    if not cross_validation:
+        population_size = 50
+        generations = 1000
+        selection = RouletteSelection()
+
+        '''crossover = DynamicPartialMappedCrossover(
+            max_crossover_rate=0.9,
+            min_crossover_rate=0.5,
+            total_gen=generations,
+            pop_size=population_size,
+            how = 'exponential')'''
+        
+        crossover = PartialMappedCrossover(crossover_rate=0)
+        
+        '''mutation = DynamicSwapMutation(
+            total_gen=generations, 
+            pop_size=population_size, 
+            max_mutation_rate=0.3, 
+            min_mutation_rate=0.05, 
+            how = 'exponential')'''
+        
+        mutation = SwapMutation(mutation_rate=0.05)
+
+        best = solve(data, 
+                     population_size, 
+                     generations,
+                     selection, 
+                     crossover, 
+                     mutation, 
+                     verbose=0)
+
+    else:
+        
+        cross_validation_folder = f"cv_{str(datetime.now().strftime('%H-%M-%S'))}"
+
+        # Define parameter grid
+        param_grid = {
+            "crossover_rate": [0.5,0.9],
+            "mutation_rate": [0.05, 0.1],
+            "population_size": [50,80],
+            "generations": [15000],
+        }
+
+        # Number of "cross validations" runs each combination of parameters
+        n_cv = 5
+
+        # Variable to store the cross validation results
+        results = {}
+
+        # Grid search loop
+        for params in product(
+            param_grid["crossover_rate"], 
+            param_grid["mutation_rate"],
+            param_grid["population_size"],
+            param_grid["generations"]
+        ):
+            crossover_rate, mutation_rate, population_size, generations = params
+            best_individuals = []
+            best_fitnesses = []
+
+            selection = RouletteSelection()
+            crossover = PartialMappedCrossover(crossover_rate=crossover_rate)
+            mutation = SwapMutation(mutation_rate=mutation_rate)
+
+            # Cross validation loop
+            for i in range(n_cv):
+                fitness = solve(data, 
+                                population_size, 
+                                generations,
+                                selection, 
+                                crossover, 
+                                mutation, 
+                                cross_validation_folder, 
+                                verbose=0)
+                best_fitnesses.append(fitness)
+
+            # Store results for each parameters combination
+            results[params] = {
+                "best_fitnesses": best_fitnesses,
+            }
+        
+
+        plot_gscv(results)
 
     
-    ga = Genetic(
-        population_size=100,
-        generations=150,
-        crossover_rate=0.5,
-        problem=TSPProblem(tsp_list=tsp_list),
-        crossover=partialMappedCrossover(),
-        selection=RouletteSelection(),
-        mutation=SwapMutation(mutation_rate=0.1),
-        verbose=1,
-    )
-
-    start = datetime.now()
-    history, best_individual = ga.run()
-    end = datetime.now() - start
-    print(f"\nTime: {end}\n")
-
-    distance_history = [1/individual.fitness for individual in history]
-    best_distance = 1/best_individual.get_fitness()
-
-    print("Best distance: ", best_distance)
-
-    dataset_name = data['NAME'].replace('NAME', '')
-    dataset_name = dataset_name.replace(':', '').strip()
-    # Sanitize and shorten the experiment name if necessary
-    experiment_name = sanitize_filename(f"{dataset_name}_{round(best_distance,4)}_{datetime.now().strftime('%H-%M-%S')}")
-
-    # Define the folder path
-    experiment_folder = os.path.join(EXPERIMENT_FOLDER, experiment_name)
-
-    ga_parameters = {
-        "population_size": ga.population_size,
-        "generations": ga.generations,
-        "crossover_rate": ga.crossover_rate,
-        "problem_class": ga.problem.__class__.__name__,
-        "crossover_class": ga.crossover.__class__.__name__,
-        "selection_class": ga.selection.__class__.__name__,
-        "mutation_class": ga.mutation.__class__.__name__,
-        "mutation_rate": ga.mutation.mutation_rate if hasattr(ga.mutation, 'mutation_rate') else None,
-    }
-    
-    # Save the plot and parameters
-    save_history(distance_history, ga_parameters, experiment_folder, experiment_name)
-    save_ga_parameters(ga_parameters, experiment_folder, experiment_name)
-    
-    solution_path = [[gene.value[0] for gene in best_individual.chromosome.genes]]
-    solution_path.append([gene.value[1] for gene in best_individual.chromosome.genes])
-    plot_path(solution_path,experiment_folder, experiment_name)
