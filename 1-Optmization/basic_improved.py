@@ -155,17 +155,24 @@ def random_mutation(lower_boundry, upper_boundry, value, mutation_value):
 
 
 ## Mutate the individual
-def mutate(individual, mutation_value, evolution_percantage):
-    # Sets the boundry values for x and y
+def mutate(individual, mutation_value, evolution_percentage):
+    # Sets the bounadry values for x and y
     lower_boundary, upper_boundary = (-4, 4)
 
+    # If in "auto" mode, use a dynamic mutation value based on the evolution percentage
     if mutation_value == 'auto':
-        if evolution_percantage < 0.3:
-            mutation_value = 0.2
-        elif evolution_percantage < 0.7:
+        if evolution_percentage < 0.3:
+            mutation_value = 0.5
+        elif evolution_percentage < 0.5:
             mutation_value = 0.1
-        else:
+        elif evolution_percentage < 0.7:
             mutation_value = 0.05
+        elif evolution_percentage < 0.9:
+            mutation_value = 0.01
+        elif evolution_percentage < 0.95:
+            mutation_value = 0.001
+        else:
+            mutation_value = 0.0005
 
     next_x = random_mutation(
         lower_boundary, upper_boundary, individual["x"], mutation_value=mutation_value
@@ -186,7 +193,7 @@ def mutate(individual, mutation_value, evolution_percantage):
 ## Improved version of the function to create th next generation
 ## In this version we only append the new individuals that have a
 ## better fitness than the worst individual in the previous generation
-def make_next_generation(previous_population, selection_method, mutation_value, evolution_percantage):
+def make_next_generation(previous_population, selection_method, mutation_value, evolution_percentage):
     # Sorts population by fitness in ascending order
     # (the higher the fitness, the better the individual)
     sorted_by_fitness_population = sort_population_by_fitness(previous_population)
@@ -212,7 +219,7 @@ def make_next_generation(previous_population, selection_method, mutation_value, 
         individual = crossover(father, mother)
 
         # Mutates the new individual
-        individual = mutate(individual, mutation_value, evolution_percantage)
+        individual = mutate(individual, mutation_value, evolution_percentage)
 
         if apply_function(individual) > apply_function(sorted_by_fitness_population[0]):
             # Replace the worst individual in the previous generation with the new individual
@@ -258,7 +265,7 @@ def genetic_algorithm(
             previous_population=population,
             selection_method=selection_method,
             mutation_value=mutation_value,
-            evolution_percantage= (i / generations)
+            evolution_percentage= (i / generations)
         )
         best_individual = sort_population_by_fitness(population)[-1]
         bestFitness.append(apply_function(best_individual))
