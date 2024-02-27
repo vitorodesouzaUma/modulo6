@@ -1,6 +1,7 @@
 from itertools import product
 from datetime import datetime
 import os
+import argparse
 
 import pandas as pd
 
@@ -96,17 +97,39 @@ def solve(
     return best_distance
 
 
+def arg_parser():
+    parser = argparse.ArgumentParser(description="TSP Genetic Algorithm")
+    parser.add_argument(
+        "-f",
+        "--file",
+        type=str,
+        help="Path to the .tsp file",
+        # default="Modulo6\\7-Optmization2\\src\\data\\bier127.tsp",
+        default="Modulo6\\7-Optmization2\\src\\data\\a280.tsp",
+    )
+    parser.add_argument(
+        "-g",
+        "--generations",
+        type=int,
+        help="Number of generations",
+        default=100000,
+    )
+    args = parser.parse_args()
+    return args.file, args.generations
+
+
 # ===========================================================================================
 # MAIN
 # ===========================================================================================
 
 
 if __name__ == "__main__":
+    # add argparser to get the file path
+    FILE_PATH, GENERATIONS = arg_parser()
+
     # Parse .tsp file
     # The function parse_tsp was developed to return a pandas DataFrame (it seems more genetical)
-    file_path = "Modulo6\\7-Optmization2\\src\\data\\a280.tsp"
-    # file_path = "Modulo6\\7-Optmization2\\src\\data\\bier127.tsp"
-    data = parse_tsp(file_path)
+    data = parse_tsp(FILE_PATH)
     # Create DataFrame
     df = pd.DataFrame(data["DATA"]).set_index(0)
     # Set column's names
@@ -120,7 +143,7 @@ if __name__ == "__main__":
 
     if not cross_validation:
         population_size = 80
-        generations = 100000
+        generations = GENERATIONS
         selection = RouletteSelection()
         crossover = PartialMappedCrossover(crossover_rate=1)
         mutation = SwapMutation(mutation_rate=0.05)
