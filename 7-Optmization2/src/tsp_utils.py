@@ -123,7 +123,11 @@ def save_solution(best_solution, folder, experiment_name):
             # Write each gene on a new line 
             f.write("%s\n" % gene)
 
-def plot_gscv(results):
+def save_gscv_hist(results, folder):
+
+    # Ensure the directory exists
+    os.makedirs(folder, exist_ok=True)
+    filename = os.path.join(folder, f"gscv_hist.png")
 
     # Plotting and printing results
     average_fitnesses = []
@@ -165,3 +169,5 @@ def plot_gscv(results):
 
     plt.tight_layout()
     plt.show()
+    plt.savefig(filename) 
+    

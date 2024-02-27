@@ -1,0 +1,4 @@
+genetic @ file:///custom_lib/genetic-0.1.2-py3-none-any.whl#sha256=19594b34b55186773f0d02184b85eff9ed55452a88924bdf9ecb62346889ce81
+matplotlib==3.8.3
+numpy==1.26.4
+pandas==2.2.0

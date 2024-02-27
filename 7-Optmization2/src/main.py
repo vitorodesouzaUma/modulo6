@@ -1,15 +1,13 @@
-#import genetic # General library created to implement Genetic Algorithms
 from itertools import product
-
-from matplotlib import pyplot as plt
-import numpy as np
-from tsp_mutation import DynamicSwapMutation, SwapMutation
-from tsp_problem import TSPProblem
-from tsp_crossover import DynamicPartialMappedCrossover, PartialMappedCrossover
-from tsp_utils import parse_tsp, sanitize_filename, save_ga_parameters, plot_gscv, save_history, plot_path, save_solution
 from datetime import datetime
 import os
+
 import pandas as pd
+
+from tsp_mutation import DynamicSwapMutation, SwapMutation
+from tsp_problem import TSPProblem
+from tsp_crossover import PartialMappedCrossover
+from tsp_utils import parse_tsp, sanitize_filename, save_ga_parameters, save_gscv_hist, save_history, plot_path, save_solution
 
 from genetic.genetic import Genetic
 from genetic.selections import RouletteSelection
@@ -95,7 +93,7 @@ if __name__ == "__main__":
 
     # Parse .tsp file
     # The function parse_tsp was developed to return a pandas DataFrame (it seems more genetical)
-    file_path = "Modulo6\\7-Optmization2\\src\\data\\berlin52.tsp"
+    file_path = "Modulo6\\7-Optmization2\\src\\data\\a280.tsp"
     #file_path = "Modulo6\\7-Optmization2\\src\\data\\bier127.tsp"
     data = parse_tsp(file_path)
     # Create DataFrame
@@ -110,26 +108,10 @@ if __name__ == "__main__":
     cross_validation = False
 
     if not cross_validation:
-        population_size = 50
-        generations = 1000
+        population_size = 80
+        generations = 100000
         selection = RouletteSelection()
-
-        '''crossover = DynamicPartialMappedCrossover(
-            max_crossover_rate=0.9,
-            min_crossover_rate=0.5,
-            total_gen=generations,
-            pop_size=population_size,
-            how = 'exponential')'''
-        
-        crossover = PartialMappedCrossover(crossover_rate=0)
-        
-        '''mutation = DynamicSwapMutation(
-            total_gen=generations, 
-            pop_size=population_size, 
-            max_mutation_rate=0.3, 
-            min_mutation_rate=0.05, 
-            how = 'exponential')'''
-        
+        crossover = PartialMappedCrossover(crossover_rate=1)
         mutation = SwapMutation(mutation_rate=0.05)
 
         best = solve(data, 
@@ -146,8 +128,7 @@ if __name__ == "__main__":
 
         # Define parameter grid
         param_grid = {
-            "crossover_rate": [0.5,0.9],
-            "mutation_rate": [0.05, 0.1],
+            "mutation_rate": [0.1, 0.05],
             "population_size": [50,80],
             "generations": [15000],
         }
@@ -160,17 +141,16 @@ if __name__ == "__main__":
 
         # Grid search loop
         for params in product(
-            param_grid["crossover_rate"], 
             param_grid["mutation_rate"],
             param_grid["population_size"],
             param_grid["generations"]
         ):
-            crossover_rate, mutation_rate, population_size, generations = params
+            mutation_rate, population_size, generations = params
             best_individuals = []
             best_fitnesses = []
 
             selection = RouletteSelection()
-            crossover = PartialMappedCrossover(crossover_rate=crossover_rate)
+            crossover = PartialMappedCrossover(crossover_rate=1)
             mutation = SwapMutation(mutation_rate=mutation_rate)
 
             # Cross validation loop
@@ -191,6 +171,6 @@ if __name__ == "__main__":
             }
         
 
-        plot_gscv(results)
+        save_gscv_hist(results,cross_validation_folder)
 
     

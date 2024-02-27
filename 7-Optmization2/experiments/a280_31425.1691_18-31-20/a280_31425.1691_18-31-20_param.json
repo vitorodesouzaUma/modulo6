@@ -1,0 +1,11 @@
+{
+    "population_size": 80,
+    "generations": 100,
+    "crossover_rate": 1,
+    "problem_class": "TSPProblem",
+    "crossover_class": "PartialMappedCrossover",
+    "selection_class": "RouletteSelection",
+    "mutation_class": "SwapMutation",
+    "mutation_rate": 0.05,
+    "Total computational time": "0:00:41.533881"
+}
