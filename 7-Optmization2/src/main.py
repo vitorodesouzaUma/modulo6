@@ -7,30 +7,39 @@ import pandas as pd
 from tsp_mutation import DynamicSwapMutation, SwapMutation
 from tsp_problem import TSPProblem
 from tsp_crossover import PartialMappedCrossover
-from tsp_utils import parse_tsp, sanitize_filename, save_ga_parameters, save_gscv_hist, save_history, plot_path, save_solution
+from tsp_utils import (
+    parse_tsp,
+    sanitize_filename,
+    save_ga_parameters,
+    save_gscv_hist,
+    save_history,
+    plot_path,
+    save_solution,
+)
 
 from genetic.genetic import Genetic
 from genetic.selections import RouletteSelection
 
 EXPERIMENT_FOLDER = "Modulo6\\7-Optmization2\\experiments\\"
 
-def solve(data, 
-          population_size, 
-          generations,
-          selection, 
-          crossover, 
-          mutation,
-          cross_validation_folder = "",
-          verbose=1):
 
-    print('\n******************** TSP solver ********************')
-    print('\nDATASET INFO: \n')
-    print('\t',data['NAME'])
-    print('\t',data['DIMENSION'])
-    print('\t',data['EDGE_WEIGHT_TYPE'])
-    print('\n****************************************************\n')
+def solve(
+    data,
+    population_size,
+    generations,
+    selection,
+    crossover,
+    mutation,
+    cross_validation_folder="",
+    verbose=1,
+):
+    print("\n******************** TSP solver ********************")
+    print("\nDATASET INFO: \n")
+    print("\t", data["NAME"])
+    print("\t", data["DIMENSION"])
+    print("\t", data["EDGE_WEIGHT_TYPE"])
+    print("\n****************************************************\n")
 
-    
     ga = Genetic(
         population_size=population_size,
         generations=generations,
@@ -46,18 +55,22 @@ def solve(data,
     elapsed_time = datetime.now() - start
     print(f"\nTotal elapsed ime: {elapsed_time}\n")
 
-    distance_history = [1/individual.fitness for individual in history]
-    best_distance = 1/best_individual.get_fitness()
+    distance_history = [1 / individual.fitness for individual in history]
+    best_distance = 1 / best_individual.get_fitness()
 
     print("Best distance: ", best_distance)
 
-    dataset_name = data['NAME'].replace('NAME', '')
-    dataset_name = dataset_name.replace(':', '').strip()
+    dataset_name = data["NAME"].replace("NAME", "")
+    dataset_name = dataset_name.replace(":", "").strip()
     # Sanitize and shorten the experiment name if necessary
-    experiment_name = sanitize_filename(f"{dataset_name}_{round(best_distance,4)}_{datetime.now().strftime('%H-%M-%S')}")
+    experiment_name = sanitize_filename(
+        f"{dataset_name}_{round(best_distance,4)}_{datetime.now().strftime('%H-%M-%S')}"
+    )
 
     # Define the folder path
-    experiment_folder = os.path.join(EXPERIMENT_FOLDER, cross_validation_folder, experiment_name)
+    experiment_folder = os.path.join(
+        EXPERIMENT_FOLDER, cross_validation_folder, experiment_name
+    )
 
     ga_parameters = {
         "population_size": ga.population_size,
@@ -68,21 +81,20 @@ def solve(data,
         "selection_class": ga.selection.__class__.__name__,
         "mutation_class": ga.mutation.__class__.__name__,
         "mutation_rate": ga.mutation.mutation_rate,
-        "Total computational time": str(elapsed_time)
+        "Total computational time": str(elapsed_time),
     }
-    
+
     # Save the plot and parameters
     save_history(distance_history, ga_parameters, experiment_folder, experiment_name)
     save_ga_parameters(ga_parameters, experiment_folder, experiment_name)
     save_solution(best_individual.chromosome.genes, experiment_folder, experiment_name)
-    
+
     solution_path = [[gene.value[0] for gene in best_individual.chromosome.genes]]
     solution_path.append([gene.value[1] for gene in best_individual.chromosome.genes])
-    plot_path(solution_path,experiment_folder, experiment_name)
+    plot_path(solution_path, experiment_folder, experiment_name)
 
     return best_distance
 
-    
 
 # ===========================================================================================
 # MAIN
@@ -90,14 +102,13 @@ def solve(data,
 
 
 if __name__ == "__main__":
-
     # Parse .tsp file
     # The function parse_tsp was developed to return a pandas DataFrame (it seems more genetical)
     file_path = "Modulo6\\7-Optmization2\\src\\data\\a280.tsp"
-    #file_path = "Modulo6\\7-Optmization2\\src\\data\\bier127.tsp"
+    # file_path = "Modulo6\\7-Optmization2\\src\\data\\bier127.tsp"
     data = parse_tsp(file_path)
     # Create DataFrame
-    df = pd.DataFrame(data['DATA']).set_index(0)
+    df = pd.DataFrame(data["DATA"]).set_index(0)
     # Set column's names
     df.columns = ["x", "y"]
     # Convert dtypes to float (it came as text from the file)
@@ -114,22 +125,23 @@ if __name__ == "__main__":
         crossover = PartialMappedCrossover(crossover_rate=1)
         mutation = SwapMutation(mutation_rate=0.05)
 
-        best = solve(data, 
-                     population_size, 
-                     generations,
-                     selection, 
-                     crossover, 
-                     mutation, 
-                     verbose=0)
+        best = solve(
+            data,
+            population_size,
+            generations,
+            selection,
+            crossover,
+            mutation,
+            verbose=0,
+        )
 
     else:
-        
         cross_validation_folder = f"cv_{str(datetime.now().strftime('%H-%M-%S'))}"
 
         # Define parameter grid
         param_grid = {
             "mutation_rate": [0.1, 0.05],
-            "population_size": [50,80],
+            "population_size": [50, 80],
             "generations": [15000],
         }
 
@@ -143,7 +155,7 @@ if __name__ == "__main__":
         for params in product(
             param_grid["mutation_rate"],
             param_grid["population_size"],
-            param_grid["generations"]
+            param_grid["generations"],
         ):
             mutation_rate, population_size, generations = params
             best_individuals = []
@@ -155,22 +167,21 @@ if __name__ == "__main__":
 
             # Cross validation loop
             for i in range(n_cv):
-                fitness = solve(data, 
-                                population_size, 
-                                generations,
-                                selection, 
-                                crossover, 
-                                mutation, 
-                                cross_validation_folder, 
-                                verbose=0)
+                fitness = solve(
+                    data,
+                    population_size,
+                    generations,
+                    selection,
+                    crossover,
+                    mutation,
+                    cross_validation_folder,
+                    verbose=0,
+                )
                 best_fitnesses.append(fitness)
 
             # Store results for each parameters combination
             results[params] = {
                 "best_fitnesses": best_fitnesses,
             }
-        
 
-        save_gscv_hist(results,cross_validation_folder)
-
-    
+        save_gscv_hist(results, cross_validation_folder)
